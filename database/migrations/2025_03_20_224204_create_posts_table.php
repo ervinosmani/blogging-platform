@@ -14,12 +14,14 @@ return new class extends Migration
         Schema::create('posts', function (Blueprint $table) {
             $table->id();
             $table->string('title');
+            $table->string('slug')->unique();
             $table->text('content');
             $table->string('category');
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); //Lidhja me tabelen e perdoruesve
             $table->integer('likes')->default(0);
             $table->enum('status', ['published', 'draft'])->default('draft');
             $table->timestamps();
+            $table->timestamp('published_at')->nullable(); //Kur eshte publikuar
         });
     }
 
