@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class PostController extends Controller
 {
@@ -33,7 +34,7 @@ class PostController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required',
             'category' => 'required|string',
-            'user_id' => 'required|exists:users,id',
+            // 'user_id' => 'required|exists:users,id',
         ]);
 
         $post = Post::create([
@@ -41,7 +42,7 @@ class PostController extends Controller
             'slug' => Str::slug($request->title),
             'content' => $request->content,
             'category' => $request->category,
-            'user_id' => $request->user_id,
+            'user_id' => Auth::id(), // merret automatikisht nga token
             'status' => 'draft',
         ]);
 
@@ -95,6 +96,11 @@ class PostController extends Controller
             return response()->json(['message' => 'Post not found'], 404);
         }
 
+        // Kontrollo nese perdoruesi eshte autori
+        if($post->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $post->update($request->all());
 
         return response()->json($post, 200);
@@ -107,6 +113,10 @@ class PostController extends Controller
 
         if(!$post) {
             return response()->json(['message' => 'Post not found'], 404);
+        }
+
+        if($post->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $post->delete();
