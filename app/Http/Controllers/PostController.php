@@ -123,4 +123,29 @@ class PostController extends Controller
 
         return response()->json(['message' => 'Post deleted successfully'], 200);
     }
+
+    // Kerkon postime bazuar ne fjalen kyce
+    public function search(Request $request)
+    {
+        $query = $request->input('query');
+
+        $posts = Post::where('status', 'published')
+            ->where(function ($q) use ($query) {
+                $q->where('title', 'like', "%{$query}%")
+                    ->orWhere('content', 'like', "%{$query}%")
+                    ->orWhere('category', 'like', "%{$query}%");
+            })
+            ->paginate(5);
+
+        return response()->json($posts, 200);
+    }
+
+    public function filterByCategory($name)
+    {
+        $posts = Post::where('status', 'published')
+            ->where('category', $name)
+            ->paginate(5);
+
+        return response()->json($posts, 200);
+    }
 }

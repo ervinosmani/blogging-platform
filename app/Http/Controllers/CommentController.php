@@ -8,10 +8,10 @@ use Illuminate\Http\Request;
 class CommentController extends Controller
 {
     // Krijon nje koment te ri per nje post
-    public function store(Request $request)
+    public function store(Request $request, $postId)
     {
         $request->validate([
-            'post_id' => 'required|exists:posts,id',
+            // 'post_id' => 'required|exists:posts,id',
             'content' => 'required|string',
         ]);
 
@@ -21,7 +21,7 @@ class CommentController extends Controller
         }
 
         $comment = Comment::create([
-            'post_id' => $request->post_id,
+            'post_id' => $postId, // merret nga URL
             'user_id' => $user->id,
             'content' => $request->content,
         ]);
@@ -73,5 +73,21 @@ class CommentController extends Controller
         $comment->delete();
 
         return response()->json(['message' => 'Comment deleted successfully'], 200);
+    }
+
+    public function likeComment($id)
+    {
+        $comment = Comment::find($id);
+
+        if(!$comment) {
+            return response()->json(['message' => 'Comment not found'], 404);
+        }
+
+        $comment->increment('likes');
+
+        return response()->json([
+            'message' => 'Comment liked successfully',
+            'likes' => $comment->likes,
+        ], 200);
     }
 }

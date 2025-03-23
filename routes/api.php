@@ -5,6 +5,9 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('posts/search', [PostController::class, 'search']);
+Route::get('posts/category/{name}', [PostController::class, 'filterByCategory']);
+
 Route::apiResource('posts', PostController::class);
 
 // Routes shtese per like dhe publikim
@@ -33,3 +36,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
 });
+
+Route::post('comments/{id}/like', [CommentController::class, 'likeComment']);
