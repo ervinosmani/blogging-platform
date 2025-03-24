@@ -24,7 +24,12 @@ class AuthController extends Controller
             'password' => bcrypt($request->password),
         ]);
 
-        return response()->json(['message' => 'User registered successfully'], 201);
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ], 201);
     }
 
     // Login dhe krijim token-i
