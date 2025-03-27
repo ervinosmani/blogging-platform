@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
@@ -12,7 +13,10 @@ Route::apiResource('posts', PostController::class);
 
 // Routes shtese per like dhe publikim
 Route::post('posts/{slug}/like', [PostController::class, 'likePost']);
-Route::post('posts/{slug}/publish', [PostController::class, 'publishPost']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('posts/{slug}/publish', [PostController::class, 'publishPost']); // I mbrojtur
+});
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -38,3 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('comments/{id}/like', [CommentController::class, 'likeComment']);
+
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::post('/categories', [CategoryController::class, 'store'])->middleware('auth:sanctum');
+
+Route::middleware('auth:sanctum')->get('/my-posts', [PostController::class, 'myPosts']);

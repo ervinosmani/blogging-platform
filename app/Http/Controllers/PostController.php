@@ -10,9 +10,21 @@ use Illuminate\Support\Facades\Auth;
 class PostController extends Controller
 {
     // Kthe te gjitha postimet
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Post::where('status', 'published')->paginate(5), 200);
+        $query = Post::query();
+
+        if ($request->has('mine')) {
+            if (!$request->user()) {
+                return response()->json(['message' => 'Unauthorized'], 401);
+            }
+
+            $query->where('user_id', $request->user()->id);
+        } else {
+            $query->where('status', 'published');
+        }
+
+        return response()->json($query->latest()->paginate(5));
     }
 
     // Kerkon nje postim specifik nga slug
@@ -34,16 +46,24 @@ class PostController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required',
             'category' => 'required|string',
+            'image' => 'nullable|image|max:2048',
             // 'user_id' => 'required|exists:users,id',
         ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('posts', 'public');
+        }
 
         $post = Post::create([
             'title' => $request->title,
             'slug' => Str::slug($request->title),
             'content' => $request->content,
             'category' => $request->category,
-            'user_id' => Auth::id(), // merret automatikisht nga token
-            'status' => 'draft',
+            'user_id' => Auth::id(),
+            'image' => $imagePath,
+            'status' => $request->is_published ? 'published' : 'draft',
+            'published_at' => $request->is_published ? now() : null,
         ]);
 
         return response()->json($post, 201);
@@ -75,6 +95,19 @@ class PostController extends Controller
         return response()->json(['message' => 'Post published successfully', 'post' => $post], 200);
     }
 
+    public function myPosts(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $posts = $user->posts()->latest()->paginate(5);
+
+        return response()->json($posts);
+    }
+
     // // Shfaq nje postim te caktuar nga ID
     // public function show(string $id)
     // {
@@ -92,16 +125,28 @@ class PostController extends Controller
     {
         $post = Post::find($id);
 
-        if(!$post) {
+        if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
         }
 
-        // Kontrollo nese perdoruesi eshte autori
-        if($post->user_id !== $request->user()->id) {
+        if ($post->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $post->update($request->all());
+        // Update fusha te lejuara
+        $post->fill($request->only(['title', 'content', 'category']));
+
+        // Rifresko slug nese titulli ka ndryshuar
+        if ($request->has('title')) {
+            $post->slug = Str::slug($request->title);
+        }
+
+        // Nese ka imazh te ri
+        if ($request->hasFile('image')) {
+            $post->image = $request->file('image')->store('posts', 'public');
+        }
+
+        $post->save();
 
         return response()->json($post, 200);
     }

@@ -18,7 +18,8 @@ class Post extends Model
         'user_id',
         'likes',
         'status',
-        'published_at'
+        'published_at',
+        'image'
     ];
 
     // Kjo metode krijon nje lidhje me modelin User per te marre autorin e postimit
