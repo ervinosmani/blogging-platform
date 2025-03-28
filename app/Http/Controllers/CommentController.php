@@ -32,7 +32,13 @@ class CommentController extends Controller
     // Merr te gjitha komentet per nje post te caktuar
     public function index($postId)
     {
-        return response()->json(Comment::where('post_id', $postId)->get(), 200);
+        return response()->json(
+            Comment::with('user') // e ngarkon relacionin user
+                ->where('post_id', $postId)
+                ->latest()
+                ->get(),
+            200
+        );
     }
 
     public function update(Request $request, $id)

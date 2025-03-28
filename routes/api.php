@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('posts/search', [PostController::class, 'search']);
 Route::get('posts/category/{name}', [PostController::class, 'filterByCategory']);
 
+Route::get('posts/slug/{slug}', [PostController::class, 'show']);
+
 Route::apiResource('posts', PostController::class);
 
 // Routes shtese per like dhe publikim
