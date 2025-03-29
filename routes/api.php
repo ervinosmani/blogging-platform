@@ -49,3 +49,5 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/categories', [CategoryController::class, 'store'])->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->get('/my-posts', [PostController::class, 'myPosts']);
+
+Route::middleware('auth:sanctum')->post('comments/{id}/like', [CommentController::class, 'toggleLike']);
