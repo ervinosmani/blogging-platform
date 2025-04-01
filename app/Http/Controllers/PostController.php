@@ -36,7 +36,20 @@ class PostController extends Controller
             return response()->json(['message' => 'Post not found'], 404);
         }
 
-        return response()->json($post, 200);
+        $liked = false;
+        if (auth('sanctum')->check()) {
+            $liked = \App\Models\PostLike::where('post_id', $post->id)
+                ->where('user_id', auth()->id())
+                ->exists();
+        }
+
+        $likesCount = \App\Models\PostLike::where('post_id', $post->id)->count();
+
+        return response()->json([
+            ...$post->toArray(),
+            'liked_by_user' => $liked,
+            'likes' => $likesCount
+        ]);
     }
 
     // Krijo nje postim te ri
@@ -67,19 +80,6 @@ class PostController extends Controller
         ]);
 
         return response()->json($post, 201);
-    }
-
-    //Shton nje pelqim ne postim
-    public function likePost($slug)
-    {
-        $post = Post::where('slug', $slug)->first();
-
-        if (!$post) {
-            return response()->json(['message' => 'Post not found'], 404);
-        }
-
-        $post->increment('likes');
-        return response()->json(['message' => 'Post liked successfully', 'likes' => $post->likes], 200);
     }
 
     // Publikon nje postim
@@ -156,11 +156,11 @@ class PostController extends Controller
     {
         $post = Post::find($id);
 
-        if(!$post) {
+        if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
         }
 
-        if($post->user_id !== auth()->id()) {
+        if ($post->user_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
