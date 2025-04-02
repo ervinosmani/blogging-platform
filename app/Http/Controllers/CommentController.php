@@ -36,25 +36,27 @@ class CommentController extends Controller
     {
         $comments = Comment::with(['user', 'replies.user'])
             ->where('post_id', $postId)
-            ->whereNull('parent_id') // vetem komentet e para
+            ->whereNull('parent_id')
             ->latest()
-            ->get()
-            ->map(function ($comment) {
-                $comment->liked = $comment->likes()
-                    ->where('user_id', auth()->id())
-                    ->exists();
-    
-                foreach ($comment->replies as $reply) {
-                    $reply->liked = $reply->likes()
-                        ->where('user_id', auth()->id())
-                        ->exists();
-                }
-    
-                return $comment;
+            ->get();
+
+        $userId = auth()->id();
+
+        $comments = $comments->map(function ($comment) use ($userId) {
+            $comment->likes = $comment->likes()->count();
+            $comment->liked = $userId ? $comment->isLikedBy($userId) : false;
+
+            $comment->replies = $comment->replies->map(function ($reply) use ($userId) {
+                $reply->likes = $reply->likes()->count();
+                $reply->liked = $userId ? $reply->isLikedBy($userId) : false;
+                return $reply;
             });
-    
+
+            return $comment;
+        });
+
         return response()->json($comments, 200);
-    }    
+    }
 
     public function update(Request $request, $id)
     {

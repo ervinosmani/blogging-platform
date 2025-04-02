@@ -31,7 +31,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Postet (me autentikim)
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{id}', [PostController::class, 'show']);
     Route::put('/posts/{id}', [PostController::class, 'update']);
@@ -40,3 +39,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my-posts', [PostController::class, 'myPosts']);
     Route::post('/posts/{id}/like', [PostLikeController::class, 'toggle']);
 });
+
+Route::get('/posts', [PostController::class, 'index']);
