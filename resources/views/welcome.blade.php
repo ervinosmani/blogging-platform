@@ -30,7 +30,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Blogging Platform</h1>
+        <h1>Blogging Platform</h1>
         <p>Website in progress... Stay tuned!</p>
     </div>
 </body>
