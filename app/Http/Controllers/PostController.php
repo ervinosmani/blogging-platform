@@ -24,15 +24,17 @@ class PostController extends Controller
             $query->where('status', 'published');
         }
 
-        return response()->json($query->latest()->paginate(5));
+        return response()->json(
+            $query->with('user')->latest()->paginate(6)
+        );        
     }
 
     // Kerkon nje postim specifik nga slug
     public function show($slug)
     {
-        $post = Post::where('slug', $slug)->first();
+        $post = Post::with('user')->where('slug', $slug)->first();
 
-        if(!$post) {
+        if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
         }
 
@@ -47,10 +49,11 @@ class PostController extends Controller
 
         return response()->json([
             ...$post->toArray(),
+            'user' => $post->user, // sigurohu qe po e perfshin user-in ne pergjigje
             'liked_by_user' => $liked,
             'likes' => $likesCount
         ]);
-    }
+    }   
 
     // Krijo nje postim te ri
     public function store(Request $request)
@@ -99,11 +102,19 @@ class PostController extends Controller
     {
         $user = $request->user();
 
+        // Sigurohu qe user-i eshte autentikuar
         if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $posts = $user->posts()->latest()->paginate(5);
+        // Merr numrin e postimeve per faqe nga query string, default 10
+        $perPage = $request->input('per_page', 10);
+
+        // Kthe postimet e perdoruesit me numrin e likes per secilin post
+        $posts = $user->posts()
+            ->withCount('likes') // kjo shton kolonen `likes_count` per çdo post
+            ->latest()
+            ->paginate($perPage);
 
         return response()->json($posts);
     }
