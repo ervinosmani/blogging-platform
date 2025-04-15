@@ -12,21 +12,36 @@ class PostController extends Controller
     // Kthe te gjitha postimet
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $query = Post::query();
 
         if ($request->has('mine')) {
-            if (!$request->user()) {
+            if (!$user) {
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
 
-            $query->where('user_id', $request->user()->id);
+            $query->where('user_id', $user->id);
         } else {
             $query->where('status', 'published');
         }
 
-        return response()->json(
-            $query->with('user')->latest()->paginate(6)
-        );        
+        // Marrim postet me user-in + numrin e likes dhe komenteve
+        $posts = $query
+            ->with(['user'])
+            ->withCount(['likes', 'comments'])
+            ->latest()
+            ->paginate(6);
+
+        // Shtojme liked_by_user për çdo post në koleksion
+        $posts->getCollection()->transform(function ($post) use ($user) {
+            $post->liked_by_user = $user
+                ? $post->likes()->where('user_id', $user->id)->exists()
+                : false;
+            return $post;
+        });
+
+        return response()->json($posts);
     }
 
     // Kerkon nje postim specifik nga slug
