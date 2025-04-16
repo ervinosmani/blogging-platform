@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Instalo varesite e sistemit
+# Instalimi i dependencave te sistemit
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpng-dev \
@@ -16,32 +16,35 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     pkg-config
 
-# Konfiguro para instalimit te gd
+# Konfigurimi per GD extension
 RUN docker-php-ext-configure gd \
-    --with-freetype \
-    --with-jpeg
+    --with-freetype=/usr/include/ \
+    --with-jpeg=/usr/include/
 
-# Instalimi i extension-eve PHP per Laravel
-RUN docker-php-ext-install pdo mbstring exif pcntl bcmath gd zip
+# Instalimi i extensioneve pa GD fillimisht
+RUN docker-php-ext-install pdo mbstring exif pcntl bcmath zip
+
+# Instalimi i GD extension veçmas
+RUN docker-php-ext-install gd
 
 # Instalimi i Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Vendos directory ku punon serveri
+# Vendos direktorine e punes
 WORKDIR /var/www
 
-# Kopjo te gjitha fajllat ne container
+# Kopjo projektin
 COPY . .
 
 # Instalimi i paketave Laravel
 RUN composer install --optimize-autoloader --no-dev
 
-# Jep leje Laravel storage
+# Jep te drejta Laravel storage
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage
 
 # Ekspozimi i portes per Render
 EXPOSE 8000
 
-# Startimi i Laravel Server
+# Start Laravel Server
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
