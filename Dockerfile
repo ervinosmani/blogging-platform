@@ -1,7 +1,6 @@
-# Perdor imazhin PHP me FPM
 FROM php:8.2-fpm
 
-# Instalo varesite e nevojshme te sistemit
+# Instalo varesite e sistemit
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpng-dev \
@@ -17,33 +16,32 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     pkg-config
 
-# RENDI I KETIJ URDHERI ESHTE I RENDESISHEM
-# Konfiguro para instalimit te gd per te mos dhene error
+# Konfiguro para instalimit te gd
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg
 
-# Tani instalo te gjitha extension-et PHP per Laravel
+# Instalimi i extension-eve PHP per Laravel
 RUN docker-php-ext-install pdo mbstring exif pcntl bcmath gd zip
 
-# Composer
+# Instalimi i Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Vendos direktorine e punes
+# Vendos directory ku punon serveri
 WORKDIR /var/www
 
-# Kopjo te gjitha skedaret e projektit
+# Kopjo te gjitha fajllat ne container
 COPY . .
 
-# Instalo Laravel dependencies pa dev
+# Instalimi i paketave Laravel
 RUN composer install --optimize-autoloader --no-dev
 
-# Jep leje Laravel-it per storage
+# Jep leje Laravel storage
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage
 
-# Trego qe porta 8000 do perdoret
+# Ekspozimi i portes per Render
 EXPOSE 8000
 
-# Start Laravel server
+# Startimi i Laravel Server
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
