@@ -1,34 +1,42 @@
+# Perdor imazhin zyrtar te PHP me FPM
 FROM php:8.2-fpm
 
-# Install system dependencies
+# Instalimi i varesive sistemore
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpng-dev \
+    libjpeg-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
     unzip \
     curl \
     git \
     sqlite3 \
-    libsqlite3-dev
+    libsqlite3-dev \
+    pkg-config
 
-# Install only essential PHP extensions
-RUN docker-php-ext-install pdo mbstring
+# Instalimi i extension-eve PHP (mbstring ka nevoje per oniguruma)
+RUN docker-php-ext-install pdo mbstring exif pcntl bcmath gd zip
 
-# Install Composer
+# Instalimi i Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
+# Direktoria e punes ne container
 WORKDIR /var/www
 
-# Copy all project files
+# Kopjo te gjitha skedaret ne container
 COPY . .
 
-# Install Laravel dependencies (production only)
+# Instalimi i dependencave Laravel (pa dev)
 RUN composer install --optimize-autoloader --no-dev
 
-# Fix permissions for Laravel
+# Vendosja e lejeve per Laravel
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage
 
-# Expose port
+# Hap porta 8000
 EXPOSE 8000
 
-# Start Laravel
+# Komanda e startimit
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
