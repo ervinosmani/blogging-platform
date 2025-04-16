@@ -1,7 +1,7 @@
-# Imazhi zyrtar PHP me FPM
+# Perdor imazhin PHP me FPM
 FROM php:8.2-fpm
 
-# Install system dependencies + fix për gd extension
+# Instalo varesite e nevojshme te sistemit
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpng-dev \
@@ -17,31 +17,32 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     pkg-config
 
-# Konfigurimi i gd për të shmangur crash-in
+# RENDI I KETIJ URDHERI ESHTE I RENDESISHEM
+# Konfiguro para instalimit te gd per te mos dhene error
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg
 
-# Install PHP extensions
+# Tani instalo te gjitha extension-et PHP per Laravel
 RUN docker-php-ext-install pdo mbstring exif pcntl bcmath gd zip
 
-# Copy composer from official image
+# Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Working directory
+# Vendos direktorine e punes
 WORKDIR /var/www
 
-# Copy project files
+# Kopjo te gjitha skedaret e projektit
 COPY . .
 
-# Install Laravel dependencies (without dev)
+# Instalo Laravel dependencies pa dev
 RUN composer install --optimize-autoloader --no-dev
 
-# Set permissions
+# Jep leje Laravel-it per storage
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage
 
-# Expose port
+# Trego qe porta 8000 do perdoret
 EXPOSE 8000
 
 # Start Laravel server
