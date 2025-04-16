@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     git \
     sqlite3 \
     libsqlite3-dev \
+    libzip-dev \
     pkg-config
 
 # Konfigurimi per GD extension
@@ -24,7 +25,7 @@ RUN docker-php-ext-configure gd \
 # Instalimi i extensioneve pa GD fillimisht
 RUN docker-php-ext-install pdo mbstring exif pcntl bcmath zip
 
-# Instalimi i GD extension veçmas
+# Instalimi i GD extension vecmas
 RUN docker-php-ext-install gd
 
 # Instalimi i Composer
