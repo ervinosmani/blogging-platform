@@ -28,12 +28,12 @@ class PostController extends Controller
 
         // Marrim postet me user-in + numrin e likes dhe komenteve
         $posts = $query
-            ->with(['user'])
+            ->with(['user', 'category'])
             ->withCount(['likes', 'comments'])
             ->latest()
             ->paginate(6);
 
-        // Shtojme liked_by_user për çdo post në koleksion
+        // Shtojme liked_by_user per çdo post ne koleksion
         $posts->getCollection()->transform(function ($post) use ($user) {
             $post->liked_by_user = $user
                 ? $post->likes()->where('user_id', $user->id)->exists()
@@ -47,58 +47,68 @@ class PostController extends Controller
     // Kerkon nje postim specifik nga slug
     public function show($slug)
     {
-        $post = Post::with('user')->where('slug', $slug)->first();
+        $post = Post::with(['user', 'category'])->where('slug', $slug)->first();
 
         if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
         }
 
-        $liked = false;
-        if (auth('sanctum')->check()) {
-            $liked = \App\Models\PostLike::where('post_id', $post->id)
-                ->where('user_id', auth()->id())
-                ->exists();
-        }
-
-        $likesCount = \App\Models\PostLike::where('post_id', $post->id)->count();
+        $liked = auth('sanctum')->check()
+            ? \App\Models\PostLike::where('post_id', $post->id)->where('user_id', auth()->id())->exists()
+            : false;
 
         return response()->json([
-            ...$post->toArray(),
-            'user' => $post->user, // sigurohu qe po e perfshin user-in ne pergjigje
+            'id' => $post->id,
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'content' => $post->content,
+            'image' => $post->image,
+            'created_at' => $post->created_at,
+            'status' => $post->status,
+            'user' => [
+                'id' => $post->user->id,
+                'name' => $post->user->name,
+                'email' => $post->user->email,
+            ],
+            'likes' => $post->likes()->count(),
             'liked_by_user' => $liked,
-            'likes' => $likesCount
+
+            'category' => $post->category ? [
+                'id' => $post->category->id,
+                'name' => $post->category->name
+            ] : null,
         ]);
-    }   
+    }
 
     // Krijo nje postim te ri
     public function store(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required',
-            'category' => 'required|string',
-            'image' => 'nullable|image|max:2048',
-            // 'user_id' => 'required|exists:users,id',
-        ]);
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'content' => 'required|string',
+        'category_id' => 'required|exists:categories,id', // ✅ ndryshim
+        'image' => 'nullable|image|max:2048',
+        'is_published' => 'nullable|boolean',
+    ]);
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('posts', 'public');
-        }
-
-        $post = Post::create([
-            'title' => $request->title,
-            'slug' => Str::slug($request->title),
-            'content' => $request->content,
-            'category' => $request->category,
-            'user_id' => Auth::id(),
-            'image' => $imagePath,
-            'status' => $request->is_published ? 'published' : 'draft',
-            'published_at' => $request->is_published ? now() : null,
-        ]);
-
-        return response()->json($post, 201);
+    $imagePath = null;
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('posts', 'public');
     }
+
+    $post = Post::create([
+        'title' => $request->title,
+        'slug' => Str::slug($request->title),
+        'content' => $request->content,
+        'category_id' => $request->category_id,
+        'user_id' => Auth::id(),
+        'image' => $imagePath,
+        'status' => $request->is_published ? 'published' : 'draft',
+        'published_at' => $request->is_published ? now() : null,
+    ]);
+
+    return response()->json($post, 201);
+}
 
     // Publikon nje postim
     public function publishPost($slug)
@@ -160,7 +170,7 @@ class PostController extends Controller
         }
 
         // Update fusha te lejuara
-        $post->fill($request->only(['title', 'content', 'category']));
+        $post->fill($request->only(['title', 'content', 'category_id']));
 
         // Rifresko slug nese titulli ka ndryshuar
         if ($request->has('title')) {
@@ -204,7 +214,9 @@ class PostController extends Controller
             ->where(function ($q) use ($query) {
                 $q->where('title', 'like', "%{$query}%")
                     ->orWhere('content', 'like', "%{$query}%")
-                    ->orWhere('category', 'like', "%{$query}%");
+                    ->orWhereHas('category', function ($q) use ($query) {
+                        $q->where('name', 'like', "%{$query}%");
+                    });                    
             })
             ->paginate(5);
 
@@ -214,7 +226,10 @@ class PostController extends Controller
     public function filterByCategory($name)
     {
         $posts = Post::where('status', 'published')
-            ->where('category', $name)
+            ->whereHas('category', function ($q) use ($name) {
+                $q->where('name', $name);
+            })
+            ->with(['category', 'user'])
             ->paginate(5);
 
         return response()->json($posts, 200);

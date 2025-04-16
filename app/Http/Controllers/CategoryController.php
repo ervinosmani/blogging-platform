@@ -9,7 +9,7 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        return response()->json(Category::pluck('name'), 200);
+        return response()->json(Category::select('id', 'name')->get(), 200);
     }
 
     public function store(Request $request)

@@ -14,7 +14,7 @@ class Post extends Model
         'title',
         'slug',
         'content',
-        'category',
+        'category_id',
         'user_id',
         'likes',
         'status',
@@ -22,31 +22,49 @@ class Post extends Model
         'image'
     ];
 
-    // Kjo metode krijon nje lidhje me modelin User per te marre autorin e postimit
+    /**
+     * Marrim autorin e postimit.
+     */
     public function user() 
     {
         return $this->belongsTo(User::class);
     }
 
-    //Krijimi automatik i slug bazuar ne titull
-    protected static function boot()
+    /**
+     * Marrim kategorine perkatese.
+     */
+    public function category()
     {
-        parent::boot();
-
-        static::creating(function ($post) {
-            if(empty($post->slug)) {
-                $post->slug = Str::slug($post->title); //Krijon slug nga titulli
-            }
-        });
+        return $this->belongsTo(Category::class);
     }
 
+    /**
+     * Marrim komentet e postit.
+     */
     public function comments()
     {
         return $this->hasMany(Comment::class);
     }
 
+    /**
+     * Marrim likes per postin.
+     */
     public function likes()
     {
         return $this->hasMany(PostLike::class);
+    }
+
+    /**
+     * Krijon automatikisht slug bazuar ne titull.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($post) {
+            if (empty($post->slug)) {
+                $post->slug = Str::slug($post->title);
+            }
+        });
     }
 }
