@@ -4,16 +4,16 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-// Rruga per migrate - PERDOR VETEM NJE HERE dhe fshije pas perdorimit!
 Route::get('/run-migrations', function () {
     try {
-        Artisan::call('migrate', ['--force' => true]);
-        return 'Migrimet u ekzekutuan me sukses ✅';
+        Log::info("Po ekzekutohet sessions migration...");
+        Artisan::call('migrate', [
+            '--path' => 'database/migrations/2025_04_17_144732_create_sessions_table.php',
+            '--force' => true
+        ]);
+        return 'Vetëm sessions migration u aplikua me sukses ✅';
     } catch (\Exception $e) {
+        Log::error("Gabim në sessions migration: " . $e->getMessage());
         return response()->json([
             'error' => true,
             'message' => $e->getMessage(),
@@ -21,3 +21,4 @@ Route::get('/run-migrations', function () {
         ], 500);
     }
 });
+
