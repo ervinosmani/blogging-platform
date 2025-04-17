@@ -16,7 +16,7 @@ Route::get('/run-migrations', function () {
             return 'Migrimet u aplikuan me sukses';
         }
 
-        return 'Migrimet janë të aplikuara tashmë';
+        return 'Migrimet jane te aplikuara tashme';
     } catch (\Exception $e) {
         Log::error("Gabim me migrimet: " . $e->getMessage());
         return response()->json([
