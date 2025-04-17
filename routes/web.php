@@ -4,6 +4,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
+Route::get('/', function () {
+    return view('welcome');
+});
+
 Route::get('/run-migrations', function () {
     try {
         // Kontrollo nese tabela sessions ekziston
