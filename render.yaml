@@ -20,4 +20,5 @@ services:
       - key: DB_DATABASE_PATH
         value: /data/database.sqlite
       - key: APP_URL
-        value: https://blogging-platform.onrender.com
+        value: https://blogging-platform-uo5r.onrender.com
+
