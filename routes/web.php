@@ -6,14 +6,11 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/run-migrations', function () {
     try {
-        Log::info("Po ekzekutohet sessions migration...");
-        Artisan::call('migrate', [
-            '--path' => 'database/migrations/2025_04_17_144732_create_sessions_table.php',
-            '--force' => true
-        ]);
-        return 'Vetëm sessions migration u aplikua me sukses ✅';
+        Artisan::call('migrate', ['--force' => true]);
+
+        return 'Të gjitha migrimet u aplikuan me sukses ✅';
     } catch (\Exception $e) {
-        Log::error("Gabim në sessions migration: " . $e->getMessage());
+        Log::error("Gabim me migrimet: " . $e->getMessage());
         return response()->json([
             'error' => true,
             'message' => $e->getMessage(),
@@ -21,4 +18,3 @@ Route::get('/run-migrations', function () {
         ], 500);
     }
 });
-
