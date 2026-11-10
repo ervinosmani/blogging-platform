@@ -4,51 +4,115 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\CommentLike;
+use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CommentController extends Controller
 {
-    // Krijon nje koment te ri per nje post
-    public function store(Request $request, $postId)
+    // Krijon nje koment ose reply per nje postim
+    public function store(Request $request, string $postId)
     {
-        $request->validate([
-            // 'post_id' => 'required|exists:posts,id',
-            'content' => 'required|string',
-        ]);
+        $user = $request->user();
 
-        $user = auth()->user(); 
         if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+            return response()->json([
+                'message' => 'Unauthorized',
+            ], 401);
         }
 
+        // Kontrollo nese postimi ekziston
+        $post = Post::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        // Vetem autori mund te komentoje ne draftin e vet
+        if (
+            $post->status !== 'published' &&
+            (int) $post->user_id !== (int) $user->id
+        ) {
+            return response()->json([
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        // Parent comment duhet t'i perkase te njejtit postim
+        $validated = $request->validate([
+            'content' => [
+                'required',
+                'string',
+            ],
+            'parent_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('comments', 'id')
+                    ->where('post_id', $post->id),
+            ],
+        ]);
+
         $comment = Comment::create([
-            'post_id' => $postId, // merret nga URL
+            'post_id' => $post->id,
             'user_id' => $user->id,
-            'content' => $request->content,
-            'parent_id' => $request->parent_id ?? null,
+            'content' => $validated['content'],
+            'parent_id' => $validated['parent_id'] ?? null,
         ]);
 
         return response()->json($comment, 201);
     }
 
-    // Merr te gjitha komentet per nje post te caktuar
-    public function index($postId)
+    // Merr komentet duke respektuar privatesine e postimit
+    public function index(Request $request, $postId)
     {
-        $comments = Comment::with(['user', 'replies.user'])
-            ->where('post_id', $postId)
+        $post = Post::find($postId);
+
+        if (!$post) {
+            return response()->json([
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        $user = $request->user('sanctum');
+
+        // Komentet e draftit i lexon vetem autori
+        if (
+            $post->status !== 'published' &&
+            (!$user || (int) $post->user_id !== (int) $user->id)
+        ) {
+            return response()->json([
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        // Mos ekspozo email-et e komentuesve
+        $comments = Comment::with([
+            'user:id,name',
+            'replies.user:id,name',
+        ])
+            ->where('post_id', $post->id)
             ->whereNull('parent_id')
             ->latest()
             ->get();
 
-        $userId = auth()->id();
+        $userId = $user?->id;
 
-        $comments = $comments->map(function ($comment) use ($userId) {
+        $comments->transform(function ($comment) use ($userId) {
             $comment->likes = $comment->likes()->count();
-            $comment->liked = $userId ? $comment->isLikedBy($userId) : false;
 
-            $comment->replies = $comment->replies->map(function ($reply) use ($userId) {
+            $comment->liked = $userId
+                ? $comment->isLikedBy($userId)
+                : false;
+
+            $comment->replies->transform(function ($reply) use ($userId) {
                 $reply->likes = $reply->likes()->count();
-                $reply->liked = $userId ? $reply->isLikedBy($userId) : false;
+
+                $reply->liked = $userId
+                    ? $reply->isLikedBy($userId)
+                    : false;
+
                 return $reply;
             });
 
@@ -58,6 +122,7 @@ class CommentController extends Controller
         return response()->json($comments, 200);
     }
 
+    // Perditeson nje koment ekzistues
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -66,38 +131,53 @@ class CommentController extends Controller
 
         $comment = Comment::find($id);
 
-        if(!$comment) {
-            return response()->json(['message' => 'Comment not found'], 404);
+        if (!$comment) {
+            return response()->json([
+                'message' => 'Comment not found',
+            ], 404);
         }
 
-        // Kontrollo nese perdoruesi i autentikuar eshte autori i komentit
-        if(auth()->id() !== $comment->user_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if ((int) auth()->id() !== (int) $comment->user_id) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
         }
 
-        $comment->update(['content' => $request->content]);
+        $comment->update([
+            'content' => $request->content,
+        ]);
 
-        return response()->json(['message' => 'Comment updated successfully','comment' => $comment], 200);
+        return response()->json([
+            'message' => 'Comment updated successfully',
+            'comment' => $comment,
+        ], 200);
     }
 
-    public function destroy($id) 
+    // Fshin nje koment
+    public function destroy($id)
     {
         $comment = Comment::find($id);
 
-        if(!$comment) {
-            return response()->json(['message' => 'Comment not found'], 404);
+        if (!$comment) {
+            return response()->json([
+                'message' => 'Comment not found',
+            ], 404);
         }
 
-        // Kontrollo nese perdoruesi i autentikuar eshte autori i komentit
-        if (auth()->id() !== $comment->user_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if ((int) auth()->id() !== (int) $comment->user_id) {
+            return response()->json([
+                'message' => 'Forbidden',
+            ], 403);
         }
 
         $comment->delete();
 
-        return response()->json(['message' => 'Comment deleted successfully'], 200);
+        return response()->json([
+            'message' => 'Comment deleted successfully',
+        ], 200);
     }
 
+    // Metode e vjeter - per shqyrtim gjate pastrimit
     public function likeComment($id)
     {
         $comment = Comment::findOrFail($id);
@@ -108,33 +188,62 @@ class CommentController extends Controller
             ->first();
 
         if ($existingLike) {
-            // Unlike nese ekziston
             $existingLike->delete();
             $comment->decrement('likes');
+
             return response()->json([
                 'message' => 'Like removed',
                 'likes' => $comment->likes,
             ]);
-        } else {
-            // Like nese ska bere me heret
-            CommentLike::create([
-                'comment_id' => $id,
-                'user_id' => $user->id,
-            ]);
-            $comment->increment('likes');
-            return response()->json([
-                'message' => 'Comment liked successfully',
-                'likes' => $comment->likes,
-            ]);
         }
+
+        CommentLike::create([
+            'comment_id' => $id,
+            'user_id' => $user->id,
+        ]);
+
+        $comment->increment('likes');
+
+        return response()->json([
+            'message' => 'Comment liked successfully',
+            'likes' => $comment->likes,
+        ]);
     }
 
-    public function toggleLike($id)
+    // Shton ose largon like nga komenti
+    public function toggleLike(Request $request, $id)
     {
-        $userId = auth()->id();
+        $user = $request->user();
 
-        $like = CommentLike::where('user_id', $userId)
-            ->where('comment_id', $id)
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        // Kontrollo nese komenti ekziston.
+        $comment = Comment::with('post')->find($id);
+
+        if (!$comment || !$comment->post) {
+            return response()->json([
+                'message' => 'Comment not found',
+            ], 404);
+        }
+
+        $post = $comment->post;
+
+        // Komentet e draftit jane private pervec autorit.
+        if (
+            $post->status !== 'published' &&
+            (int) $post->user_id !== (int) $user->id
+        ) {
+            return response()->json([
+                'message' => 'Comment not found',
+            ], 404);
+        }
+
+        $like = CommentLike::where('user_id', $user->id)
+            ->where('comment_id', $comment->id)
             ->first();
 
         if ($like) {
@@ -142,17 +251,21 @@ class CommentController extends Controller
             $liked = false;
         } else {
             CommentLike::create([
-                'user_id' => $userId,
-                'comment_id' => $id,
+                'user_id' => $user->id,
+                'comment_id' => $comment->id,
             ]);
+
             $liked = true;
         }
 
-        $count = CommentLike::where('comment_id', $id)->count();
+        $count = CommentLike::where(
+            'comment_id',
+            $comment->id
+        )->count();
 
         return response()->json([
             'liked' => $liked,
-            'likes' => $count 
-        ]);
+            'likes' => $count,
+        ], 200);
     }
 }

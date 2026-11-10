@@ -2,41 +2,66 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PostLike;
 use App\Models\Post;
+use App\Models\PostLike;
 use Illuminate\Http\Request;
 
 class PostLikeController extends Controller
 {
-    public function toggle($id)
+    public function toggle(Request $request, $id)
     {
-        $userId = auth()->id();
+        $user = $request->user();
 
-        $post = Post::find($id); // kontrollon nëse ekziston
-        if (!$post) {
-            return response()->json(['message' => 'Post not found'], 404);
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
         }
 
-        $like = PostLike::where('user_id', $userId)
-                        ->where('post_id', $id)
-                        ->first();
+        // Kontrollo nese postimi ekziston.
+        $post = Post::find($id);
+
+        if (!$post) {
+            return response()->json([
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        // Vetem autori mund te beje like ne draftin e vet.
+        if (
+            $post->status !== 'published' &&
+            (int) $post->user_id !== (int) $user->id
+        ) {
+            return response()->json([
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        // Kontrollo nese perdoruesi e ka pelqyer postimin.
+        $like = PostLike::where('user_id', $user->id)
+            ->where('post_id', $post->id)
+            ->first();
 
         if ($like) {
+            // Unlike: largo pelqimin ekzistues.
             $like->delete();
             $liked = false;
         } else {
+            // Like: krijo nje pelqim te ri.
             PostLike::create([
-                'user_id' => $userId,
-                'post_id' => $id
+                'user_id' => $user->id,
+                'post_id' => $post->id,
             ]);
+
             $liked = true;
         }
 
-        $count = PostLike::where('post_id', $id)->count();
+        // Numri i pelqimeve merret nga databaza.
+        $count = PostLike::where('post_id', $post->id)->count();
 
         return response()->json([
             'liked' => $liked,
-            'likes' => $count
-        ]);
+            'likes' => $count,
+        ], 200);
     }
 }
